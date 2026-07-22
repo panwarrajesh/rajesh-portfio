@@ -290,6 +290,7 @@ export default function ResumeEngine({ open, onClose }) {
   const [uploading, setUploading] = useState(false)
   const [uploadError, setUploadError] = useState('')
   const [photoError, setPhotoError] = useState('')
+  const [downloadError, setDownloadError] = useState('')
   const previewRef = useRef(null)
   const fileInputRef = useRef(null)
   const photoInputRef = useRef(null)
@@ -476,15 +477,38 @@ export default function ResumeEngine({ open, onClose }) {
   const handleDownload = async () => {
     if (!previewRef.current) return
     setDownloading(true)
+    setDownloadError('')
     try {
       const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
         import('html2canvas'),
         import('jspdf'),
       ])
+
+      // Make sure any <img> (e.g. the uploaded photo) is fully decoded before
+      // we snapshot the DOM — otherwise html2canvas can grab a blank frame
+      // or throw, which looks like "nothing happens" when Download is clicked.
+      const imgs = Array.from(previewRef.current.querySelectorAll('img'))
+      await Promise.all(
+        imgs.map((img) =>
+          img.complete && img.naturalWidth > 0
+            ? Promise.resolve()
+            : new Promise((resolve) => {
+                img.addEventListener('load', resolve, { once: true })
+                img.addEventListener('error', resolve, { once: true })
+                setTimeout(resolve, 3000)
+              })
+        )
+      )
+      if (document.fonts && document.fonts.ready) {
+        await document.fonts.ready
+      }
+
       const canvas = await html2canvas(previewRef.current, {
         scale: 2,
         backgroundColor: '#ffffff',
         useCORS: true,
+        allowTaint: true,
+        imageTimeout: 15000,
       })
       const imgData = canvas.toDataURL('image/png')
       const pdf = new jsPDF('p', 'mm', 'a4')
@@ -507,6 +531,7 @@ export default function ResumeEngine({ open, onClose }) {
       pdf.save(`${(data.name || 'Resume').replace(/\s+/g, '_')}_Resume.pdf`)
     } catch (err) {
       console.error(err)
+      setDownloadError('Couldn\u2019t generate the PDF. If you added a photo, try a smaller image and download again.')
     } finally {
       setDownloading(false)
     }
@@ -630,6 +655,17 @@ export default function ResumeEngine({ open, onClose }) {
       {stage === 'editor' && (
         <div className="flex-1 min-h-0 grid lg:grid-cols-[1fr_1fr] overflow-hidden">
           <div className="min-w-0 overflow-y-auto p-4 sm:p-6 space-y-7 sm:space-y-8 border-b lg:border-b-0 lg:border-r border-ink-200 dark:border-ink-700">
+            {downloadError && (
+              <div className="flex items-start gap-2 rounded-lg border border-red-300/50 bg-red-500/5 p-3.5 text-sm text-red-600 dark:text-red-400">
+                <AlertCircle size={16} className="shrink-0 mt-0.5" />
+                <span>
+                  {downloadError}
+                  <button onClick={() => setDownloadError('')} className="focus-ring block mt-1 text-xs underline">
+                    dismiss
+                  </button>
+                </span>
+              </div>
+            )}
             {importBanner && (
               <div className="flex items-start gap-2 rounded-lg border border-accent/30 bg-accent/5 p-3.5 text-sm text-ink-600 dark:text-ink-200">
                 <Sparkles size={15} className="text-accent shrink-0 mt-0.5" />
@@ -917,7 +953,7 @@ function ResumePreview({ data, template, previewRef }) {
         <div className="flex gap-4 sm:gap-5 items-start pb-5 border-b-2" style={{ borderColor: 'rgb(var(--accent-rgb))' }}>
           <Avatar photo={data.photo} name={data.name} size={72} />
           <div className="min-w-0 flex-1">
-            <div className="font-display font-bold text-xl sm:text-3xl truncate">{data.name || 'Your Name'}</div>
+            <div className="font-display font-bold text-xl sm:text-3xl break-words">{data.name || 'Your Name'}</div>
             <div className="mt-0.5 text-sm sm:text-base font-medium" style={{ color: 'rgb(var(--accent-rgb))' }}>{data.title}</div>
           </div>
         </div>
@@ -1024,7 +1060,7 @@ function ResumePreview({ data, template, previewRef }) {
           <div className="flex items-center gap-2.5 min-w-0">
             {data.photo && <Avatar photo={data.photo} name={data.name} size={36} />}
             <div className="min-w-0">
-              <div className="font-display font-bold text-base sm:text-lg truncate">{data.name || 'Your Name'}</div>
+              <div className="font-display font-bold text-base sm:text-lg break-words">{data.name || 'Your Name'}</div>
               <div className="text-xs font-medium" style={{ color: 'rgb(var(--accent-rgb))' }}>{data.title}</div>
             </div>
           </div>
@@ -1101,7 +1137,7 @@ function ResumePreview({ data, template, previewRef }) {
         <div className="flex gap-4 items-center pb-5 border-b-2" style={{ borderColor: 'rgb(var(--accent-rgb))' }}>
           <Avatar photo={data.photo} name={data.name} size={64} />
           <div className="min-w-0">
-            <div className="font-display font-bold text-xl sm:text-2xl truncate">{data.name || 'Your Name'}</div>
+            <div className="font-display font-bold text-xl sm:text-2xl break-words">{data.name || 'Your Name'}</div>
             <div className="text-sm font-medium" style={{ color: 'rgb(var(--accent-rgb))' }}>{data.title}</div>
             <div className="mt-1 text-xs text-[#8891A5]">
               {[data.email, data.phone, data.location].filter(Boolean).join('  ·  ')}
@@ -1218,7 +1254,7 @@ function ResumePreview({ data, template, previewRef }) {
         <div className="px-6 sm:px-10 py-6 sm:py-8 flex items-center gap-4" style={{ backgroundColor: '#1A1F2B' }}>
           <Avatar photo={data.photo} name={data.name} size={64} square />
           <div className="min-w-0">
-            <div className="font-display font-bold text-lg sm:text-2xl text-white truncate">{data.name || 'Your Name'}</div>
+            <div className="font-display font-bold text-lg sm:text-2xl text-white break-words">{data.name || 'Your Name'}</div>
             <div className="text-xs sm:text-sm mt-0.5" style={{ color: 'rgb(var(--accent-rgb))' }}>{data.title}</div>
           </div>
         </div>
