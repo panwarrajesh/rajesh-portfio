@@ -44,26 +44,45 @@ export default function Resume({ onOpen }) {
             </button>
           </div>
 
-          <div className="relative rounded-xl border border-ink-200 dark:border-ink-700 bg-paper-50 dark:bg-ink-800 p-6 aspect-[4/5] flex flex-col gap-3 overflow-hidden">
-            <div className="h-4 w-2/3 rounded bg-ink-900/10 dark:bg-paper-100/10" />
-            <div className="h-2.5 w-1/3 rounded bg-mint-500/40" />
-            <div className="mt-2 space-y-1.5">
-              <div className="h-2 w-full rounded bg-ink-900/5 dark:bg-paper-100/5" />
-              <div className="h-2 w-5/6 rounded bg-ink-900/5 dark:bg-paper-100/5" />
-              <div className="h-2 w-4/6 rounded bg-ink-900/5 dark:bg-paper-100/5" />
+          {/* Mock resume preview card — sized to a real A4 page ratio (210:297 ≈ 0.707) */}
+          <div className="relative mx-auto w-full max-w-[280px] rounded-xl border border-ink-200 dark:border-ink-700 bg-paper-50 dark:bg-ink-800 p-5 sm:p-6 aspect-[210/297] flex flex-col overflow-hidden">
+            {/* header */}
+            <div className="h-3.5 w-2/3 rounded bg-ink-900/10 dark:bg-paper-100/10" />
+            <div className="mt-2 h-2 w-2/5 rounded bg-mint-500/40" />
+
+            {/* summary lines */}
+            <div className="mt-4 space-y-1.5">
+              <div className="h-1.5 w-full rounded bg-ink-900/5 dark:bg-paper-100/5" />
+              <div className="h-1.5 w-5/6 rounded bg-ink-900/5 dark:bg-paper-100/5" />
+              <div className="h-1.5 w-4/6 rounded bg-ink-900/5 dark:bg-paper-100/5" />
             </div>
-            <div className="mt-3 flex flex-wrap gap-1.5">
+
+            {/* skills chips */}
+            <div className="mt-4 flex flex-wrap gap-1.5">
               {['React', 'Node.js', 'MongoDB', 'MySQL', 'Redux'].map((t) => (
-                <span key={t} className="px-2 py-1 rounded bg-ink-900/5 dark:bg-paper-100/5 text-[10px] font-mono text-ink-400">
+                <span
+                  key={t}
+                  className="px-1.5 py-0.5 rounded bg-ink-900/5 dark:bg-paper-100/5 text-[9px] font-mono text-ink-400 leading-tight"
+                >
                   {t}
                 </span>
               ))}
             </div>
-            <div className="mt-3 space-y-2">
-              <div className="h-2.5 w-1/4 rounded bg-ink-900/10 dark:bg-paper-100/10" />
-              <div className="h-2 w-full rounded bg-ink-900/5 dark:bg-paper-100/5" />
-              <div className="h-2 w-3/4 rounded bg-ink-900/5 dark:bg-paper-100/5" />
+
+            {/* experience block */}
+            <div className="mt-4 space-y-1.5">
+              <div className="h-2 w-1/3 rounded bg-ink-900/10 dark:bg-paper-100/10" />
+              <div className="h-1.5 w-full rounded bg-ink-900/5 dark:bg-paper-100/5" />
+              <div className="h-1.5 w-3/4 rounded bg-ink-900/5 dark:bg-paper-100/5" />
             </div>
+
+            {/* projects block */}
+            <div className="mt-4 space-y-1.5">
+              <div className="h-2 w-1/3 rounded bg-ink-900/10 dark:bg-paper-100/10" />
+              <div className="h-1.5 w-full rounded bg-ink-900/5 dark:bg-paper-100/5" />
+              <div className="h-1.5 w-2/3 rounded bg-ink-900/5 dark:bg-paper-100/5" />
+            </div>
+
             <div className="absolute inset-0 bg-gradient-to-t from-paper-50 dark:from-ink-800 via-transparent to-transparent pointer-events-none" />
           </div>
         </div>
