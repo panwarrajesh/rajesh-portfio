@@ -20,6 +20,8 @@ import {
   Sparkles,
   AlertCircle,
   Camera,
+  Languages as LanguagesIcon,
+  ClipboardCheck,
 } from 'lucide-react'
 
 const STORAGE_KEY = 'rp-resume-data-v2'
@@ -45,11 +47,14 @@ const DEFAULT_DATA = {
     { title: 'Employee Management System', desc: 'Employee records, attendance, and CRUD operations on MongoDB.' },
     { title: 'Authentication System', desc: 'Token-based sessions with protected, role-based routes.' },
   ],
+  languages: ['Hindi', 'English'],
+  declaration:
+    'I hereby declare that the above information is true to the best of my knowledge and belief.',
 }
 
 const EMPTY_DATA = {
   name: '', title: '', photo: '', email: '', phone: '', location: '', summary: '',
-  skills: [], education: [], experience: [], projects: [],
+  skills: [], education: [], experience: [], projects: [], languages: [], declaration: '',
 }
 
 const TEMPLATES = [
@@ -91,6 +96,8 @@ const SECTION_HEADERS = [
   { key: 'experience', re: /^(work\s+experience|professional\s+experience|employment\s+history|experience)\s*:?$/i },
   { key: 'education', re: /^(educational\s+background|education|academic\s+background|academic\s+qualifications)\s*:?$/i },
   { key: 'projects', re: /^(personal\s+projects|academic\s+projects|key\s+projects|projects)\s*:?$/i },
+  { key: 'languages', re: /^(languages\s+known|language\s+proficiency|languages)\s*:?$/i },
+  { key: 'declaration', re: /^(declaration|self\s+declaration)\s*:?$/i },
 ]
 
 const MONTHS = 'Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec'
@@ -274,6 +281,18 @@ function parseResumeText(rawText) {
   if (sections.experience) result.experience = parseExperience(sections.experience)
   if (sections.projects) result.projects = parseProjects(sections.projects)
 
+  if (sections.languages) {
+    result.languages = uniq(
+      sections.languages
+        .flatMap((l) => stripBullet(l).split(/,|·|\u2022/))
+        .map((s) => s.trim())
+        .filter((s) => s.length > 0 && s.length <= 40)
+    )
+  }
+  if (sections.declaration) {
+    result.declaration = sections.declaration.map(stripBullet).join(' ').trim()
+  }
+
   return result
 }
 
@@ -438,6 +457,15 @@ export default function ResumeEngine({ open, onClose }) {
   }
   const removeSkill = (i) => setData((d) => ({ ...d, skills: d.skills.filter((_, idx) => idx !== i) }))
 
+  const [languageInput, setLanguageInput] = useState('')
+  const addLanguage = () => {
+    const v = languageInput.trim()
+    if (!v) return
+    setData((d) => ({ ...d, languages: [...d.languages, v] }))
+    setLanguageInput('')
+  }
+  const removeLanguage = (i) => setData((d) => ({ ...d, languages: d.languages.filter((_, idx) => idx !== i) }))
+
   const addEducation = () => setData((d) => ({ ...d, education: [...d.education, { degree: '', institute: '' }] }))
   const updateEducation = (i, key, value) =>
     setData((d) => {
@@ -511,22 +539,22 @@ export default function ResumeEngine({ open, onClose }) {
         imageTimeout: 15000,
       })
       const imgData = canvas.toDataURL('image/png')
-      const pdf = new jsPDF('p', 'mm', 'a4')
-      const pageWidth = pdf.internal.pageSize.getWidth()
-      const pageHeight = pdf.internal.pageSize.getHeight()
-      const imgWidth = pageWidth
-      const imgHeight = (canvas.height * imgWidth) / canvas.width
 
-      let heightLeft = imgHeight
-      let position = 0
-      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight)
-      heightLeft -= pageHeight
-      while (heightLeft > 0) {
-        position = heightLeft - imgHeight
-        pdf.addPage()
-        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight)
-        heightLeft -= pageHeight
-      }
+      // Always export as ONE single page: instead of a fixed A4 height and
+      // splitting overflow onto extra pages, we build a PDF page whose
+      // height matches the resume's own content height. The page is always
+      // A4-width (210mm) but grows/shrinks vertically to fit everything on
+      // a single page, no matter how long or short the resume is.
+      const pageWidthMm = 210
+      const pxToMm = pageWidthMm / canvas.width
+      const pageHeightMm = canvas.height * pxToMm
+
+      const pdf = new jsPDF({
+        orientation: 'p',
+        unit: 'mm',
+        format: [pageWidthMm, pageHeightMm],
+      })
+      pdf.addImage(imgData, 'PNG', 0, 0, pageWidthMm, pageHeightMm)
 
       pdf.save(`${(data.name || 'Resume').replace(/\s+/g, '_')}_Resume.pdf`)
     } catch (err) {
@@ -772,6 +800,34 @@ export default function ResumeEngine({ open, onClose }) {
               </div>
             </Field>
 
+            <Field icon={LanguagesIcon} title="Languages">
+              <div className="flex flex-wrap gap-2 mb-3">
+                {data.languages.map((s, i) => (
+                  <span
+                    key={i}
+                    className="inline-flex items-center gap-1.5 pl-3 pr-2 py-1.5 rounded-md bg-paper-100 dark:bg-ink-800 border border-ink-200 dark:border-ink-700 text-xs font-mono text-ink-600 dark:text-ink-200 max-w-full"
+                  >
+                    <span className="truncate">{s}</span>
+                    <button onClick={() => removeLanguage(i)} aria-label={`Remove ${s}`} className="focus-ring text-ink-400 hover:text-red-500 shrink-0">
+                      <X size={12} />
+                    </button>
+                  </span>
+                ))}
+              </div>
+              <div className="flex gap-2">
+                <input
+                  value={languageInput}
+                  onChange={(e) => setLanguageInput(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addLanguage())}
+                  placeholder="Add a language and press Enter"
+                  className="focus-ring flex-1 min-w-0 h-10 px-3 rounded-lg border border-ink-200 dark:border-ink-700 bg-white dark:bg-ink-900 text-sm text-ink-900 dark:text-paper-50 placeholder:text-ink-300 dark:placeholder:text-ink-500"
+                />
+                <button onClick={addLanguage} className="focus-ring w-10 h-10 rounded-lg bg-ink-900 dark:bg-mint-500 text-paper-50 dark:text-ink-950 flex items-center justify-center shrink-0">
+                  <Plus size={16} />
+                </button>
+              </div>
+            </Field>
+
             <Field icon={GraduationCap} title="Education" onAdd={addEducation}>
               <div className="space-y-4">
                 {data.education.map((ed, i) => (
@@ -837,6 +893,10 @@ export default function ResumeEngine({ open, onClose }) {
                 ))}
                 {data.projects.length === 0 && <EmptyRow label="No projects added yet." />}
               </div>
+            </Field>
+
+            <Field icon={ClipboardCheck} title="Declaration">
+              <TextArea value={data.declaration} onChange={(v) => update('declaration', v)} rows={3} />
             </Field>
           </div>
 
@@ -939,6 +999,11 @@ function projectsSimple(projects) {
   )
 }
 
+function declarationText(declaration) {
+  if (!declaration) return null
+  return <p className="text-sm italic leading-relaxed text-[#4B5468] whitespace-pre-line">{declaration}</p>
+}
+
 /* ---------------------------------------------------------------- */
 /* Main preview switch                                               */
 /* ---------------------------------------------------------------- */
@@ -978,6 +1043,12 @@ function ResumePreview({ data, template, previewRef }) {
                 <div className="mt-2">{educationSimple(data.education)}</div>
               </div>
             )}
+            {data.languages.length > 0 && (
+              <div>
+                <h3 className="font-display font-semibold text-xs tracking-wide uppercase text-[#8891A5]">Languages</h3>
+                <div className="mt-2">{skillsChips(data.languages, 'inline-block px-2 py-1 rounded text-[11px] font-mono bg-[#F2F4F8] text-[#4B5468]')}</div>
+              </div>
+            )}
           </div>
           <div className="space-y-5 min-w-0">
             {data.summary && (
@@ -996,6 +1067,12 @@ function ResumePreview({ data, template, previewRef }) {
               <div>
                 <h3 className="font-display font-semibold text-xs tracking-wide uppercase text-[#8891A5]">Projects</h3>
                 <div className="mt-1.5">{projectsSimple(data.projects)}</div>
+              </div>
+            )}
+            {data.declaration && (
+              <div>
+                <h3 className="font-display font-semibold text-xs tracking-wide uppercase text-[#8891A5]">Declaration</h3>
+                <div className="mt-1.5">{declarationText(data.declaration)}</div>
               </div>
             )}
           </div>
@@ -1046,6 +1123,18 @@ function ResumePreview({ data, template, previewRef }) {
           <div className="mt-6">
             <h3 className="text-[11px] tracking-[0.2em] uppercase text-[#8891A5] text-center">Projects</h3>
             <div className="mt-3 space-y-3">{projectsSimple(data.projects)}</div>
+          </div>
+        )}
+        {data.languages.length > 0 && (
+          <div className="mt-6 text-center">
+            <h3 className="text-[11px] tracking-[0.2em] uppercase text-[#8891A5]">Languages</h3>
+            <p className="mt-2 text-sm">{data.languages.join('  ·  ')}</p>
+          </div>
+        )}
+        {data.declaration && (
+          <div className="mt-6 text-center">
+            <h3 className="text-[11px] tracking-[0.2em] uppercase text-[#8891A5]">Declaration</h3>
+            <p className="mt-2 text-sm max-w-xl mx-auto">{data.declaration}</p>
           </div>
         )}
       </div>
@@ -1126,6 +1215,20 @@ function ResumePreview({ data, template, previewRef }) {
             </div>
           </div>
         )}
+
+        {data.languages.length > 0 && (
+          <div className="mt-3 text-xs">
+            <span className="font-semibold uppercase tracking-wide text-[10px] text-[#8891A5] mr-1.5">Languages</span>
+            {data.languages.join(', ')}
+          </div>
+        )}
+
+        {data.declaration && (
+          <div className="mt-3">
+            <h3 className="font-semibold uppercase tracking-wide text-[10px] text-[#8891A5]">Declaration</h3>
+            <p className="mt-1 text-xs text-[#4B5468] leading-snug">{data.declaration}</p>
+          </div>
+        )}
       </div>
     )
   }
@@ -1190,6 +1293,20 @@ function ResumePreview({ data, template, previewRef }) {
             <div className="space-y-3">{projectsSimple(data.projects)}</div>
           </div>
         )}
+
+        {data.languages.length > 0 && (
+          <div className="mt-6">
+            <h3 className="font-display font-semibold text-xs tracking-wide uppercase text-[#8891A5] mb-2">Languages</h3>
+            <p className="text-sm text-[#4B5468]">{data.languages.join(', ')}</p>
+          </div>
+        )}
+
+        {data.declaration && (
+          <div className="mt-6">
+            <h3 className="font-display font-semibold text-xs tracking-wide uppercase text-[#8891A5] mb-2">Declaration</h3>
+            <p className="text-sm text-[#4B5468] leading-relaxed">{data.declaration}</p>
+          </div>
+        )}
       </div>
     )
   }
@@ -1242,6 +1359,18 @@ function ResumePreview({ data, template, previewRef }) {
               <div className="mt-1.5">{projectsSimple(data.projects)}</div>
             </div>
           )}
+          {data.languages.length > 0 && (
+            <div>
+              <h3 className="font-display font-bold text-xs tracking-wide uppercase" style={{ color: 'rgb(var(--accent-rgb))' }}>Languages</h3>
+              <p className="mt-1.5 text-sm text-[#4B5468]">{data.languages.join(', ')}</p>
+            </div>
+          )}
+          {data.declaration && (
+            <div>
+              <h3 className="font-display font-bold text-xs tracking-wide uppercase" style={{ color: 'rgb(var(--accent-rgb))' }}>Declaration</h3>
+              <p className="mt-1.5 text-sm text-[#4B5468] leading-relaxed">{data.declaration}</p>
+            </div>
+          )}
         </div>
       </div>
     )
@@ -1284,6 +1413,12 @@ function ResumePreview({ data, template, previewRef }) {
                 <div className="mt-2">{projectsSimple(data.projects)}</div>
               </div>
             )}
+            {data.declaration && (
+              <div>
+                <h3 className="font-display font-bold text-xs tracking-wide uppercase text-[#1A1F2B] border-b border-[#E4E8EF] pb-1">04 · Declaration</h3>
+                <p className="mt-2 text-sm leading-relaxed text-[#4B5468]">{data.declaration}</p>
+              </div>
+            )}
           </div>
           <div className="space-y-5">
             {data.skills.length > 0 && (
@@ -1296,6 +1431,12 @@ function ResumePreview({ data, template, previewRef }) {
               <div>
                 <h3 className="font-display font-bold text-xs tracking-wide uppercase text-[#1A1F2B] border-b border-[#E4E8EF] pb-1">Education</h3>
                 <div className="mt-2">{educationSimple(data.education)}</div>
+              </div>
+            )}
+            {data.languages.length > 0 && (
+              <div>
+                <h3 className="font-display font-bold text-xs tracking-wide uppercase text-[#1A1F2B] border-b border-[#E4E8EF] pb-1">Languages</h3>
+                <p className="mt-2 text-sm text-[#4B5468]">{data.languages.join(', ')}</p>
               </div>
             )}
           </div>
@@ -1342,6 +1483,12 @@ function ResumePreview({ data, template, previewRef }) {
               </div>
             </div>
           )}
+          {data.languages.length > 0 && (
+            <div>
+              <h3 className="text-[10px] tracking-wide uppercase text-white/70 mb-1.5">Languages</h3>
+              <p className="text-xs text-white/85">{data.languages.join(', ')}</p>
+            </div>
+          )}
         </div>
 
         <div className="p-5 sm:p-7 space-y-5 min-w-0">
@@ -1367,6 +1514,14 @@ function ResumePreview({ data, template, previewRef }) {
                 <span className="w-2 h-2 rounded-sm" style={{ backgroundColor: 'rgb(var(--accent-rgb))' }} /> Projects
               </h3>
               <div className="mt-2">{projectsSimple(data.projects)}</div>
+            </div>
+          )}
+          {data.declaration && (
+            <div>
+              <h3 className="flex items-center gap-1.5 font-display font-semibold text-xs tracking-wide uppercase text-[#1A1F2B]">
+                <span className="w-2 h-2 rounded-sm" style={{ backgroundColor: 'rgb(var(--accent-rgb))' }} /> Declaration
+              </h3>
+              <p className="mt-2 text-sm leading-relaxed text-[#4B5468]">{data.declaration}</p>
             </div>
           )}
         </div>
@@ -1443,6 +1598,18 @@ function ResumePreview({ data, template, previewRef }) {
       {data.projects.length > 0 && (
         <PreviewSection title="Projects" isMinimal={isMinimal}>
           {projectsSimple(data.projects)}
+        </PreviewSection>
+      )}
+
+      {data.languages.length > 0 && (
+        <PreviewSection title="Languages" isMinimal={isMinimal}>
+          {skillsInline(data.languages)}
+        </PreviewSection>
+      )}
+
+      {data.declaration && (
+        <PreviewSection title="Declaration" isMinimal={isMinimal}>
+          {declarationText(data.declaration)}
         </PreviewSection>
       )}
     </div>
