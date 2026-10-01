@@ -9,6 +9,7 @@ import Contact from './components/Contact.jsx'
 import Footer from './components/Footer.jsx'
 import ThemeEngine from './components/ThemeEngine.jsx'
 import ResumeEngine from './components/ResumeEngine.jsx'
+import ResumeEditor from './components/Resumeeditor.jsx'
 
 export default function App() {
   const [theme, setTheme] = useState(() => {
@@ -49,6 +50,7 @@ export default function App() {
       <Navbar theme={theme} toggleTheme={toggleTheme} onOpenResume={openResume} />
       <main>
         <Hero />
+        <ResumeEditor />
         <About />
         <Skills />
         <Projects />
